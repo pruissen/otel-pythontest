@@ -69,7 +69,7 @@ arn:aws:lambda:eu-central-1:901920570463:layer:aws-otel-python-amd64-ver-1-29-0:
 - https://jessitron.com/2021/08/11/run-an-opentelemetry-collector-locally-in-docker/
 
 ``` Testing
-(.venv) (devbox) [al8049@p3561 src (⎈|pax1-tst:demo-cdit-kafka-connector-tst)]$ opentelemetry-bootstrap
+(.venv) (devbox) $ opentelemetry-bootstrap
 opentelemetry-instrumentation-asyncio==0.50b0
 opentelemetry-instrumentation-dbapi==0.50b0
 opentelemetry-instrumentation-logging==0.50b0
