@@ -1,0 +1,40 @@
+#collector.yaml in the root directory
+#Set an environment variable 'OPENTELEMETRY_COLLECTOR_CONFIG_URI' to '/var/task/collector.yaml'
+# https://docs.dynatrace.com/docs/ingest-from/opentelemetry/collector/configuration
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+  otlphttp:
+    endpoint: "https://yourtenant.live.dynatrace.com/api/v2/otlp"
+    headers:
+      Authorization: "Api-Token YOURAPITOKEN"
+
+processors:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug, otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug, otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: []
+      exporters: [debug, otlphttp]
+  telemetry:
+    metrics:
+      address: localhost:8888
