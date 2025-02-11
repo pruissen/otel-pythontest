@@ -1,6 +1,6 @@
 provider "aws" {
   region  = "eu-central-1"
-  profile = "yourawsprofile-eu-central-1"
+  profile = "YOUR_AWS_PROFILE"
 }
 
 resource "aws_iam_role" "lambda_role" {
@@ -113,7 +113,7 @@ resource "aws_lambda_function" "terraform_lambda" {
       OTEL_LOGS_EXPORTER                                       = "console,otlp"
       OTEL_EXPORTER_OTLP_PROTOCOL                              = "http/protobuf"
       
-      DT_OTLP_ENDPOINT                                         = "https://yourtenant.live.dynatrace.com/api/v2/otlp"
+      DT_OTLP_ENDPOINT                                         = "https://YOURTENANT/api/v2/otlp"
       DT_API_TOKEN                                             = "YOUR_API_TOKEN"
       AWS_LAMBA_EXEC_WRAPPER                                   = "/opt/otel-instrument"
       OPENTELEMETRY_COLLECTOR_CONFIG_URI                       = "file://var/task/collector.yaml"
