@@ -17,10 +17,10 @@ exporters:
   otlphttp:
     endpoint: "https://YOURTENANT.live.dynatrace.com/api/v2/otlp"
     headers:
-      Authorization: "Api-Token YOURAPITOKEN"
+      Authorization: "Api-Token YOURTOKEN"
 
-processors:
-  cumulativetodelta:
+# processors:
+  # cumulativetodelta:
 
 service:
   pipelines:
@@ -30,7 +30,7 @@ service:
       exporters: [debug, otlphttp]
     metrics:
       receivers: [otlp]
-      processors: [cumulativetodelta]
+      processors: []
       exporters: [debug, otlphttp]
     logs:
       receivers: [otlp]
