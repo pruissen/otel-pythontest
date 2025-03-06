@@ -6,6 +6,10 @@ With ADOT, you have: “the ability to send observability data to multiple diffe
 
 Backends can be X-Ray, Dynatrace or others
 
+## Opentelemetry in the Dynatrace GUI
+![Alt text](docs/images/result.png?raw=true "Adot Dynatrace")
+
+## Design
 ![Alt text](docs/images/adot-layer.png?raw=true "Adot Dynatrace")
 
 ## How to deploy with terraform to lambda:
