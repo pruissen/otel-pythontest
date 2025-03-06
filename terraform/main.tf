@@ -111,17 +111,13 @@ resource "aws_lambda_function" "terraform_lambda" {
       OTEL_TRACES_EXPORTER                                     = "console,otlp"
       OTEL_METRICS_EXPORTER                                    = "console,otlp"
       OTEL_LOGS_EXPORTER                                       = "console,otlp"
-      OTEL_EXPORTER_OTLP_PROTOCOL                              = "http/protobuf"
-      
-      DT_OTLP_ENDPOINT                                         = "https://YOURTENANT/api/v2/otlp"
-      DT_API_TOKEN                                             = "YOUR_API_TOKEN"
-      AWS_LAMBA_EXEC_WRAPPER                                   = "/opt/otel-instrument"
+
+      AWS_LAMBDA_EXEC_WRAPPER                                   = "/opt/otel-instrument"
       OPENTELEMETRY_COLLECTOR_CONFIG_URI                       = "file://var/task/collector.yaml"
-      # deprecated OPENTELEMETRY_COLLECTOR_CONFIG_FILE         = "/var/task/collector.yaml"
 
       OTEL_EXPORTER_OTLP_ENDPOINT                              = "http://localhost:4318"
       OTEL_EXPORTER_OTLP_TIMEOUT                               = 3000
-      OTEL_RESOURCE_ATTRIBUTES                                 = "service.name=otel-lambda-sample,service.version=1.0.0, environment=dev, tenant=observability"
+      OTEL_RESOURCE_ATTRIBUTES                                 = "service.name=otel-lambda-sample4,service.version=1.0.0, environment=dev, tenant=observability"
       # OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST = ".*"
       # OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE        = "Delta"
 
@@ -135,17 +131,22 @@ resource "aws_lambda_function" "terraform_lambda" {
   layers = [
     # First method ---------------------------
     # ADOT layer collector + autoinstrumentation in one layer
-    "arn:aws:lambda:eu-central-1:901920570463:layer:aws-otel-python-amd64-ver-1-29-0:1",
+    #"arn:aws:lambda:eu-central-1:901920570463:layer:aws-otel-python-amd64-ver-1-29-0:1",
     # See https://github.com/aws-observability/aws-otel-community/tree/master/sample-apps/python-auto-instrumentation-sample-app
 
     # Second method ---------------------------
     # OTEL layer collector 
-    # "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-collector-amd64-0_12_0:1",
+    "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-collector-amd64-0_12_0:1",
     # OTEL layer autoinstrumentation 
     # https://github.com/open-telemetry/opentelemetry-lambda/tree/main/python/sample-apps/aws-sdk/deploy/wrapper
     # https://github.com/open-telemetry/opentelemetry-lambda/releases
-    # "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-python-0_11_0:1",
+    "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-python-0_11_0:1",
 
+    #URL=$(aws lambda get-layer-version-by-arn --arn arn:aws:lambda:eu-central-1:901920570463:layer:aws-otel-python-amd64-ver-1-29-0:1 --query Content.Location --output text)
+    #curl $URL -o aws-otel-python-amd64-ver-1-29-0:1.zip
+
+    #URL=$(aws lambda get-layer-version-by-arn --arn arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-collector-amd64-0_12_0:1 --query Content.Location --output text)
+    #curl $URL -o opentelemetry-collector-amd64-community.zip
 
     #URL=$(aws lambda get-layer-version-by-arn --arn arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-python-0_11_0:1 --query Content.Location --output text)
     #curl $URL -o opentelemetry-python-layer.zip
