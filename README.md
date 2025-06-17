@@ -15,7 +15,9 @@ Backends can be X-Ray, Dynatrace or others
 ## How to deploy with terraform to lambda:
 This is terraform but can be changed to CDK, SAM or whatever
 ```bash
-# Set your user and use the Makefile to deploy the lambda
+# Clone the repo, set your user profile and use the Makefile to deploy the lambda
+(.venv) user:~/otel-pythontest$ git clone git@github.com:pruissen/otel-pythontest.git
+(.venv) user:~/otel-pythontest$  cd terraform
 (.venv) user:~/otel-pythontest/terraform$ export AWS_PROFILE="yourprofile"
 (.venv) user:~/otel-pythontest/terraform$ aws sts get-caller-identity
 {
@@ -23,52 +25,38 @@ This is terraform but can be changed to CDK, SAM or whatever
     "Account": "accountid",
     "Arn": "arn:aws:sts::accountid:assumed-role/AWSReservedSSO_useraccountname"
 }
-(.venv) user:~/otel-pythontest/terraform$  cd terraform
+(.venv) user:~/otel-pythontest/terraform$ $ make clean
 (.venv) user:~/otel-pythontest/terraform$ $ make deploy
 ```
-## How to deploy locally:
+## AWS Parameter store
+The terraform config uses config from the AWS parameter store in the following format:
 ```bash
-src/run_collector_local.sh
-src/run.sh
+key name: /observability/otel/tst/config
+description: Opentelemetry demo for AWS Lambda/EKS with Dynatrace backend
+```
+```bash
+{
+"OTEL_EXPORTER_OTLP_ENDPOINT":"https://yourtenant.live.dynatrace.com/api/v2/otlp",
+"OTEL_EXPORTER_OTLP_TOKEN":"yourtoken.yourkey",
+"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE":"delta",
+"OTEL_EXPORTER_OTLP_PROTOCOL":"http/protobuf",
+"OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED":"true",
+"AWS_PROFILE":"yourprofile-optionally"
+}
 ```
 
-## Env variables
-These variables can be used for your app
-```bash
-"OTEL_SERVICE_NAME": "otel-sample1",
-"OTEL_SERVICE_VERSION": "1.0.0",
-"OTEL_TENANT_NAME": "obs",
-"OTEL_RESOURCE_ATTRIBUTES": "service.name=otel-sample1,service.version=1.0.0",
-"OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST":".*",
-```
-These variables can be used if the collector is not present. Otherwise 
-```bash
-"OTEL_EXPORTER_OTLP_ENDPOINT": "https://your_dt_tenant.live.dynatrace.com/api/v2/otlp"
-"OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
-"OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
-"OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "true",
-"OTEL_EXPORTER_OTLP_TIMEOUT":"2000"
-"OTEL_EXPORTER_OTLP_TOKEN":"dt0c01.yourtoken"
-```
-
-#### Adot container images 
-```bash
-public.ecr.aws/aws-observability/adot-autoinstrumentation-python:v0.8.0
-public.ecr.aws/aws-observability/aws-otel-collector:v0.41.2 
-```
 
 #### Opentelemetry layers: an alternative for adot
 ```bash
-arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-collector-amd64-0_12_0:1
-arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-python-0_11_0:1
+    # 1. OpenTelemetry Community Python Instrumentation Layer
+    # Find the latest stable version for your Python runtime and region from:
+    # https://github.com/open-telemetry/opentelemetry-lambda/releases
+    "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-python-0_14_0:1", # Example ARN for Python 3.11
+    # 2. OpenTelemetry Community Collector Layer
+    # Find the latest stable version for your architecture and region from:
+    # https://github.com/open-telemetry/opentelemetry-lambda/releases
+    "arn:aws:lambda:eu-central-1:184161586896:layer:opentelemetry-collector-amd64-0_15_0:1", # Example ARN for amd64 architecture
 ```
-#### Adot layer combines collector and autoinstrumentation
-```bash
-arn:aws:lambda:eu-central-1:901920570463:layer:aws-otel-python-amd64-ver-1-29-0:1
-```
-- Contains OpenTelemetry Python v1.29.0
-- Contains ADOT Collector v0.42.0
-
 
 #### Links
 - https://aws.amazon.com/blogs/opensource/auto-instrumenting-a-python-application-with-an-aws-distro-for-opentelemetry-lambda-layer/
