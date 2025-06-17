@@ -1,40 +1,60 @@
-#collector.yaml in the root directory
-#Set an environment variable 'OPENTELEMETRY_COLLECTOR_CONFIG_URI' to '/var/task/collector.yaml'
-# https://docs.dynatrace.com/docs/ingest-from/opentelemetry/collector/configuration
+# src/collector.yaml
 receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: 0.0.0.0:4317
       http:
-        endpoint: 0.0.0.0:4318
-
-exporters:
-  debug:
-    verbosity: detailed
-    sampling_initial: 5
-    sampling_thereafter: 200
-  otlphttp:
-    endpoint: "https://YOURTENANT/api/v2/otlp"
-    headers:
-      Authorization: "Api-Token YOURAPITOKEN"
 
 processors:
+  resource:
+    attributes:
+      # Dynamically fill Lambda ARN from environment variables passed by Terraform
+      - key: cloud.resource_id
+        value: "arn:aws:lambda:${env:TF_AWS_REGION}:${env:TF_AWS_ACCOUNT_ID}:function:${env:TF_AWS_LAMBDA_FUNCTION_NAME}"
+        action: insert
+      # Set Dynatrace Cloud Application entity name
+      - key: dt.entity.cloud_application
+        value: "${env:OTEL_SERVICE_NAME}" # Uses OTEL_SERVICE_NAME from Lambda env
+        action: insert
+      # Identify OpenTelemetry as the source of metrics for Dynatrace
+      - key: dt.metrics.source
+        value: "opentelemetry"
+        action: insert
+      # Add other resource attributes from OTEL_RESOURCE_ATTRIBUTES env var (already handled by SDK/resource processor)
+      - key: service.name
+        from_attribute: "service.name"
+        action: upsert
+      - key: service.version
+        from_attribute: "service.version"
+        action: upsert
+      - key: environment
+        from_attribute: "environment"
+        action: upsert
+      - key: tenant
+        from_attribute: "tenant"
+        action: upsert
+
+exporters:
+  otlphttp/dynatrace: # Renamed exporter for clarity
+    endpoint: "${env:OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR}" # Collector's target endpoint from environment variable
+    headers:
+      Authorization: "Api-Token ${env:DT_API_TOKEN}" # Your Dynatrace API token
+    timeout: 30s # Collector timeout for sending data
+    compression: gzip # Recommended for payload size optimization
+  debug:
+    verbosity: detailed
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: []
-      exporters: [debug, otlphttp]
+      processors: [resource]
+      exporters: [debug, otlphttp/dynatrace]
     metrics:
       receivers: [otlp]
-      processors: []
-      exporters: [debug, otlphttp]
+      processors: [resource] 
+      exporters: [debug, otlphttp/dynatrace]
     logs:
       receivers: [otlp]
-      processors: []
-      exporters: [debug, otlphttp]
-  telemetry:
-    metrics:
-      address: localhost:8888
+      processors: [resource] 
+      exporters: [debug, otlphttp/dynatrace]

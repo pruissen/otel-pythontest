@@ -1,1 +1,18 @@
+# Core dependencies
 requests
+
+# OpenTelemetry API + SDK
+opentelemetry-api==1.34.1
+opentelemetry-sdk==1.34.1
+
+# Instrumentation for requests
+opentelemetry-instrumentation-requests==0.44b0
+
+# OTLP exporter (HTTP/protobuf) – used by ADOT or custom collectors
+opentelemetry-exporter-otlp==1.34.1
+
+# (Optional) Add this if using Lambda Layer autoinstrumentation
+opentelemetry-instrumentation==0.44b0
+
+# Optional for richer debug logging
+opentelemetry-semantic-conventions==0.44b0

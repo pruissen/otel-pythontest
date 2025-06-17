@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export DT_OTLP_ENDPOINT="https://yourtenant.live.dynatrace.com/api/v2/otlp"
-export DT_API_TOKEN="YOURAPITOKEN"
+export DT_API_TOKEN="yourtoken"
 export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318/"

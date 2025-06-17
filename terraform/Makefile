@@ -20,4 +20,6 @@ test:
 # Clean up Lambda Function and Terraform state
 clean:
 	@echo "Cleaning up..."
+	rm -rf builds testing
+	pwd
 	terraform destroy -auto-approve

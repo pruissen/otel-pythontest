@@ -13,10 +13,18 @@ Backends can be X-Ray, Dynatrace or others
 ![Alt text](docs/images/adot-layer.png?raw=true "Adot Dynatrace")
 
 ## How to deploy with terraform to lambda:
-This is terraform but can be chnaged to CDK, SAM or whatever
+This is terraform but can be changed to CDK, SAM or whatever
 ```bash
-cd terraform
-make deploy
+# Set your user and use the Makefile to deploy the lambda
+(.venv) user:~/otel-pythontest/terraform$ export AWS_PROFILE="yourprofile"
+(.venv) user:~/otel-pythontest/terraform$ aws sts get-caller-identity
+{
+    "UserId": "userid",
+    "Account": "accountid",
+    "Arn": "arn:aws:sts::accountid:assumed-role/AWSReservedSSO_useraccountname"
+}
+(.venv) user:~/otel-pythontest/terraform$  cd terraform
+(.venv) user:~/otel-pythontest/terraform$ $ make deploy
 ```
 ## How to deploy locally:
 ```bash
@@ -35,7 +43,7 @@ These variables can be used for your app
 ```
 These variables can be used if the collector is not present. Otherwise 
 ```bash
-"OTEL_EXPORTER_OTLP_ENDPOINT": "https://yourtenant.live.dynatrace.com/api/v2/otlp"
+"OTEL_EXPORTER_OTLP_ENDPOINT": "https://your_dt_tenant.live.dynatrace.com/api/v2/otlp"
 "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "delta",
 "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
 "OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED": "true",

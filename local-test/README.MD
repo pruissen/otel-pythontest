@@ -7,7 +7,7 @@ docker build -t lambda_function_telemetry .
 ```
 
 ```bash
-export DT_OTLP_ENDPOINT="https://YOURTENANT.live.dynatrace.com/api/v2/otlp"
+export DT_OTLP_ENDPOINT="https://yourtenant.live.dynatrace.com/api/v2/otlp"
 export DT_API_TOKEN="YOURTOKEN"
 export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 

@@ -15,7 +15,7 @@ exporters:
     sampling_initial: 5
     sampling_thereafter: 200
   otlphttp:
-    endpoint: "https://YOURTENANT.live.dynatrace.com/api/v2/otlp"
+    endpoint: "https://yourtenant.live.dynatrace.com/api/v2/otlp"
     headers:
       Authorization: "Api-Token YOURTOKEN"
 
