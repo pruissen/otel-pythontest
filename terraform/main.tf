@@ -1,7 +1,7 @@
 # main.tf
 provider "aws" {
   region  = "eu-central-1"
-  # Removed profile here, as it's now in SSM
+  profile = "381492084963_PowerUserAccess-eu-central-1" # Explicitly setting the profile for Terraform
 }
 
 # Data sources to get current AWS region and account ID
@@ -71,7 +71,6 @@ resource "aws_iam_policy" "lambda_policy" {
           "ssm:GetParameter"
         ]
         Effect   = "Allow"
-        # Be specific about the resource if possible for least privilege
         Resource = data.aws_ssm_parameter.otel_config.arn
       }
     ]
@@ -106,17 +105,16 @@ resource "aws_lambda_function" "terraform_lambda" {
     variables = {
       # Values from SSM Parameter Store
       OTEL_EXPORTER_OTLP_ENDPOINT                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT
+      OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR       = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR # New value
       OTEL_EXPORTER_OTLP_PROTOCOL                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_PROTOCOL
       OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = local.otel_env_vars.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
       DT_API_TOKEN                                = local.otel_env_vars.OTEL_EXPORTER_OTLP_TOKEN # Mapping to the correct key name
-      AWS_PROFILE                                 = local.otel_env_vars.AWS_PROFILE # Added AWS_PROFILE from SSM
+      AWS_PROFILE                                 = local.otel_env_vars.AWS_PROFILE # AWS_PROFILE from SSM
 
-      # Existing values or values not present in SSM.  These will override the SSM values if there is a conflict.
+      # Existing values or values not present in SSM.
       OTEL_LOGS_EXPORTER                  = "console, otlp" # Use OTLP exporter for logs
       AWS_LAMBDA_EXEC_WRAPPER            = "/opt/otel-instrument"
       OPENTELEMETRY_COLLECTOR_CONFIG_URI = "file://var/task/collector.yaml"
-      OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR = "https://yourtenant.live.dynatrace.com/api/v2/otlp" # Collector -> Dynatrace
-      OTEL_EXPORTER_OTLP_ENDPOINT        = "http://localhost:4318" # Python SDK -> Local Collector (This one might be overridden by the SSM value if present in SSM and intended for the SDK)
       OTEL_SERVICE_NAME                  = "otel-lambda-test1"
       OTEL_EXPORTER_OTLP_TIMEOUT         = "30000" # 30 seconds
       OTEL_RESOURCE_ATTRIBUTES           = "service.name=otel-lambda-test1,service.version=1.0.0,environment=dev,tenant=observability"
