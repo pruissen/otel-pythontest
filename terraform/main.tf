@@ -105,11 +105,10 @@ resource "aws_lambda_function" "terraform_lambda" {
     variables = {
       # Values from SSM Parameter Store
       OTEL_EXPORTER_OTLP_ENDPOINT                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT
-      OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR       = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR # New value
+      OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR       = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR
       OTEL_EXPORTER_OTLP_PROTOCOL                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_PROTOCOL
       OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = local.otel_env_vars.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
-      DT_API_TOKEN                                = local.otel_env_vars.OTEL_EXPORTER_OTLP_TOKEN # Mapping to the correct key name
-      AWS_PROFILE                                 = local.otel_env_vars.AWS_PROFILE # AWS_PROFILE from SSM
+      DT_API_TOKEN                                = local.otel_env_vars.OTEL_EXPORTER_OTLP_TOKEN
 
       # Existing values or values not present in SSM.
       OTEL_LOGS_EXPORTER                  = "console, otlp" # Use OTLP exporter for logs
@@ -121,7 +120,7 @@ resource "aws_lambda_function" "terraform_lambda" {
       OTEL_PYTHON_LOG_CORRELATION        = "true" # Enables log correlation with traces
       OTEL_PYTHON_LOG_FORMAT             = "%(msg)s [span_id=%(otelSpanID)s] [trace_id=%(otelTraceID)s]"
       OTEL_PYTHON_LOG_LEVEL              = "debug" # Set Python logger level to debug
-      OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED = local.otel_env_vars.OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED # From SSM
+      OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED = "true" # Enable automatic instrumentation for Python logging"
 
       # Environment variables for Collector to dynamically fill Lambda ARN in resource attributes
       TF_AWS_REGION             = data.aws_region.current.name
