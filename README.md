@@ -59,6 +59,8 @@ description: Opentelemetry demo for AWS Lambda/EKS with Dynatrace backend
 ```
 
 #### Links
+- https://www.highlight.io/blog/the-complete-guide-to-python-and-opentelemetry
+
 - https://aws.amazon.com/blogs/opensource/auto-instrumenting-a-python-application-with-an-aws-distro-for-opentelemetry-lambda-layer/
 - https://catalog.workshops.aws/observability/en-US/aws-managed-oss/adot/lambda-tracing
 - https://github.com/aws-observability/aws-otel-lambda/tree/main
