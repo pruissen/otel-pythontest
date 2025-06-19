@@ -1,125 +1,159 @@
-import os
-import requests
+import json
 import logging
-
-# OpenTelemetry SDK imports for logs
-from opentelemetry._logs import get_logger_provider, set_logger_provider # ADDED get_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, SimpleLogRecordProcessor, ConsoleLogExporter
-
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-
-# OpenTelemetry imports for traces and metrics
-from opentelemetry import trace, metrics
-
-# --- START OpenTelemetry Logging Configuration ---
-print("--- [DIAGNOSTIC] Setting up OpenTelemetry Logging in app.py (attempting to use existing provider) ---")
-
-# Try to get the LoggerProvider that might have already been set by the Lambda Layer.
-# If not found, fall back to creating a new one (though unlikely with the wrapper).
-try:
-    otel_logger_provider = get_logger_provider()
-    print("--- [DIAGNOSTIC] Found existing LoggerProvider from layer. ---")
-except RuntimeError:
-    # This block should ideally not be hit if the otel-instrument wrapper runs first.
-    print("--- [DIAGNOSTIC] No existing LoggerProvider found. Creating a new one. ---")
-    otel_logger_provider = LoggerProvider()
-    set_logger_provider(otel_logger_provider)
+import time
+import requests
+import os # Import the os module to access environment variables
+from requests.adapters import HTTPAdapter # Added for retry mechanism
+from urllib3.util.retry import Retry # Added for retry mechanism
+# Import OpenTelemetry logging API for explicit shutdown
+from opentelemetry import _logs # Add this import
 
 
-# OTLP log exporter (sends logs to the OTEL collector or Dynatrace)
-#otlp_log_exporter = OTLPLogExporter()
-
-# Batch processor is preferred for performance
-#otel_logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
-
-# # Also export logs to console for debugging (optional, remove later if only OTLP is desired)
-# console_exporter = ConsoleLogExporter()
-# otel_logger_provider.add_log_record_processor(SimpleLogRecordProcessor(console_exporter))
-
-console_exporter = ConsoleLogExporter()
-otel_logger_provider.add_log_record_processor(BatchLogRecordProcessor(console_exporter))
-
-# Attach OTEL logging to Python logging
-# Check if LoggingHandler is already attached to avoid duplicates on warm starts.
-# Duplicates can lead to logs being processed multiple times.
-if not any(isinstance(h, LoggingHandler) for h in logging.getLogger().handlers):
-    otel_logging_handler = LoggingHandler(logger_provider=otel_logger_provider)
-    logging.getLogger().addHandler(otel_logging_handler)
-    print("--- [DIAGNOSTIC] OpenTelemetry LoggingHandler added. ---")
-else:
-    print("--- [DIAGNOSTIC] OpenTelemetry LoggingHandler already present. Skipping re-add. ---")
+# Import OpenTelemetry metrics API for defining custom metrics
+from opentelemetry import metrics
+from opentelemetry.metrics import Counter, Histogram
 
 
-# Set Python root log level from env (OTEL_PYTHON_LOG_LEVEL)
-# This controls which messages Python's logging module will process and pass on.
-log_level = os.environ.get("OTEL_PYTHON_LOG_LEVEL", "INFO").upper()
-logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
-print(f"--- [DIAGNOSTIC] Python root logger level set to: {logging.getLogger().level} ({log_level}) ---")
+# --- Logging Configuration ---
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-# --- END OpenTelemetry Logging Configuration ---
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(levelname)s: %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-# Initialize Tracer and Meter
-tracer = trace.get_tracer(__name__)
-meter = metrics.get_meter(__name__)
-logger = logging.getLogger(__name__) # Ensure this is initialized AFTER OTel logging setup
+# --- OpenTelemetry Custom Metrics Setup ---
+# Retrieve the service name from environment variable,
+# defaulting to "my-lambda-app" if not found.
+service_name = os.environ.get("OTEL_SERVICE_NAME", "my-lambda-app")
+meter = metrics.get_meter(service_name, version="1.0.0")
 
-
-# Custom metrics
-request_count = meter.create_counter(
-    "http_request_count",
-    description="Counts the number of HTTP requests made",
+http_request_count: Counter = meter.create_counter(
+    name="http.request.count",
+    description="Counts the number of outgoing HTTP requests made by the Lambda.",
     unit="1"
 )
 
-http_latency = meter.create_histogram(
-    "http_request_latency_seconds",
-    description="Measures the latency of HTTP requests",
+http_request_latency_seconds: Histogram = meter.create_histogram(
+    name="http.request.latency.seconds",
+    description="Measures the latency (duration) of outgoing HTTP requests in seconds.",
     unit="s"
 )
 
+# --- Configure Requests Session with Retries ---
+# Define the retry strategy
+retry_strategy = Retry(
+    total=3, # Max 3 retries
+    backoff_factor=0.5, # 0.5s, 1s, 2s delays between retries
+    status_forcelist=[429, 500, 502, 503, 504], # Retry on these HTTP status codes
+    allowed_methods=["HEAD", "GET", "OPTIONS"], # Only retry for safe methods
+    raise_on_status=False, # Do not raise for status codes handled by status_forcelist
+    connect=3, # Number of retries for connection errors (like ConnectionResetError)
+    read=3, # Number of retries for read errors
+    respect_retry_after_header=True, # Respect 'Retry-After' header if present
+)
+
+# Create an HTTPAdapter with the retry strategy
+adapter = HTTPAdapter(max_retries=retry_strategy)
+
+# Create a requests session and mount the adapter for all HTTP and HTTPS requests
+http = requests.Session()
+http.mount("http://", adapter)
+http.mount("https://", adapter)
+
+
+# --- Lambda Handler Function ---
 def lambda_handler(event, context):
-    logger.info("Lambda invocation started.")
+    """
+    Handles incoming Lambda invocations, makes an outgoing HTTP request,
+    and demonstrates OpenTelemetry custom metrics and logging.
+    """
+    logger.info("Lambda function execution initiated.")
+    print("Starting Lambda handler: preparing to make an HTTP request.")
 
     target_url = "https://www.google.com"
 
-    with tracer.start_as_current_span("lambda_execution") as lambda_span:
-        lambda_span.set_attribute("lambda.function_name", context.function_name)
-        lambda_span.set_attribute("lambda.request_id", context.aws_request_id)
+    # --- Custom Metric: Increment Request Count ---
+    http_request_count.add(1, {"url": target_url, "function_name": context.function_name})
+    logger.debug(f"Custom metric 'http.request.count' incremented for target: {target_url}")
+    print(f"Attempting to connect to: {target_url}")
 
+    start_time = time.time()
+    response_status_code = None
+
+    try:
+        logger.info(f"Executing HTTP GET request to {target_url} with a 10-second timeout.")
+        # Perform the HTTP GET request using the session with retries
+        response = http.get(target_url, timeout=10)
+
+        # Raise an HTTPError for bad responses (4xx or 5xx status codes) not handled by retries
+        response.raise_for_status()
+
+        response_status_code = response.status_code
+        end_time = time.time()
+        duration = end_time - start_time
+
+        # --- Custom Metric: Record Request Latency ---
+        http_request_latency_seconds.record(duration, {
+            "url": target_url,
+            "status_code": response_status_code,
+            "function_name": context.function_name,
+            "success": True
+        })
+
+        logger.info(f"Successfully received response from {target_url}. Status: {response_status_code}, Duration: {duration:.4f}s")
+        logger.debug(f"Custom metric 'http.request.latency.seconds' recorded: {duration:.4f}s for {target_url}")
+        print(f"HTTP request to {target_url} completed successfully. Status Code: {response_status_code}.")
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': f'Successfully made request to {target_url}',
+                'status_code': response_status_code,
+                'request_duration_seconds': f"{duration:.4f}"
+            })
+        }
+
+    except requests.exceptions.Timeout as e:
+        end_time = time.time()
+        duration = end_time - start_time
+        logger.error(f"Request to {target_url} timed out after {duration:.2f}s: {e}", exc_info=True)
+        http_request_latency_seconds.record(duration, {
+            "url": target_url,
+            "error_type": "timeout",
+            "function_name": context.function_name,
+            "success": False
+        })
+        print(f"ERROR: Request to {target_url} timed out.")
+        return {
+            'statusCode': 408,
+            'body': json.dumps({'message': f'Request to {target_url} timed out', 'error': str(e)})
+        }
+    except requests.exceptions.RequestException as e:
+        end_time = time.time()
+        duration = end_time - start_time
+        # This catch will now also handle ConnectionError after retries are exhausted
+        logger.error(f"An error occurred during HTTP request to {target_url} after {duration:.2f}s: {e}", exc_info=True)
+        http_request_latency_seconds.record(duration, {
+            "url": target_url,
+            "error_type": "request_exception",
+            "function_name": context.function_name,
+            "success": False,
+            "status_code": response_status_code if response_status_code else "N/A"
+        })
+        print(f"ERROR: Failed to make HTTP request to {target_url}.")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': f'Failed to make request to {target_url}', 'error': str(e)})
+        }
+    finally:
+        logger.info("Lambda function execution finished.")
+        print("Lambda handler completed its run.")
+        # Explicitly shut down the logger provider to ensure logs are flushed
+        # This is important for short-lived functions like AWS Lambda.
         try:
-            with tracer.start_as_current_span("call_google_com") as http_span:
-                http_span.set_attribute("http.method", "GET")
-                http_span.set_attribute("http.url", target_url)
-
-                logger.info(f"Making request to {target_url}")
-                response = requests.get(target_url, timeout=5)
-
-                http_span.set_attribute("http.status_code", response.status_code)
-                logger.info(f"Request completed with status: {response.status_code}")
-
-                request_count.add(1, {"url": target_url, "status_code": response.status_code})
-                http_latency.record(response.elapsed.total_seconds(), {"url": target_url})
-
-                if response.status_code == 200:
-                    logger.info("Successfully fetched content from Google.")
-                    http_span.set_status(trace.StatusCode.OK)
-                else:
-                    logger.warning(f"Non-200 status code received: {response.status_code}")
-                    http_span.record_exception(Exception(f"HTTP request failed with status: {response.status_code}"))
-                    http_span.set_status(trace.StatusCode.ERROR, description=f"HTTP Error {response.status_code}")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request error: {e}")
-            lambda_span.record_exception(e)
-            lambda_span.set_status(trace.StatusCode.ERROR, description=str(e))
+            _logs.get_logger_provider().shutdown()
+            logger.debug("OpenTelemetry LoggerProvider shutdown initiated successfully.")
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            lambda_span.record_exception(e)
-            lambda_span.set_status(trace.StatusCode.ERROR, description=str(e))
-
-    logger.info("Lambda invocation finished.")
-    return {
-        'statusCode': 200,
-        'body': 'Lambda executed successfully with OpenTelemetry data.'
-    }
+            logger.error(f"Error during OpenTelemetry LoggerProvider shutdown: {e}", exc_info=True)
