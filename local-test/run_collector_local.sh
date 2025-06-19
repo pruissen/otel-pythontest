@@ -5,7 +5,7 @@ export DT_API_TOKEN="yourtoken"
 export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
 
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318/"
-export OTEL_RESOURCE_ATTRIBUTES="service.name=otel-lambda-sample,service.version=1.0.0, environment=dev, tenant=observability"
+export OTEL_RESOURCE_ATTRIBUTES="service.name=otel-lambda-test1,service.version=1.0.0, environment=dev, tenant=observability"
 export OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=".*"
 export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE="Delta"
 

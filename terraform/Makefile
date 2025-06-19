@@ -1,6 +1,6 @@
 # Makefile to deploy, test, and clean Lambda Function
 REGION = eu-central-1
-FUNCTION_NAME = otel-lambda-sample
+FUNCTION_NAME = otel-lambda-test1
 
 # Deploy Lambda Function
 deploy:

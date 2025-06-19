@@ -1,7 +1,6 @@
 # main.tf
 provider "aws" {
   region  = "eu-central-1"
-  profile = "381492084963_PowerUserAccess-eu-central-1" # Explicitly setting the profile for Terraform
 }
 
 # Data sources to get current AWS region and account ID
@@ -20,7 +19,7 @@ locals {
 }
 
 resource "aws_iam_role" "lambda_role" {
-  name = "otel-lambda-sample"
+  name = "otel-lambda-test1-role" # Explicitly defined role name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -37,7 +36,7 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_policy" "lambda_policy" {
-  name        = "otel-lambda-sample-policy"
+  name        = "otel-lambda-test1-policy"
   description = "Policy for Lambda to send telemetry to X-Ray and CloudWatch Logs"
 
   policy = jsonencode({
@@ -91,7 +90,7 @@ data "archive_file" "python_lambda_package" {
 }
 
 resource "aws_lambda_function" "terraform_lambda" {
-  function_name    = "otel-lambda-sample" # Explicitly defined function name
+  function_name    = "otel-lambda-test1" # Explicitly defined function name
   role             = aws_iam_role.lambda_role.arn
   runtime          = "python3.11"
   handler          = "app.lambda_handler" # Assumes your main function is in src/app.py
@@ -104,7 +103,7 @@ resource "aws_lambda_function" "terraform_lambda" {
   environment {
     variables = {
       # Values from SSM Parameter Store
-      OTEL_EXPORTER_OTLP_ENDPOINT                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT
+      OTEL_EXPORTER_OTLP_ENDPOINT                 = "http://localhost:4318", # Replace with your actual OTLP endpoint
       OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR       = local.otel_env_vars.OTEL_EXPORTER_OTLP_ENDPOINT_COLLECTOR
       OTEL_EXPORTER_OTLP_PROTOCOL                 = local.otel_env_vars.OTEL_EXPORTER_OTLP_PROTOCOL
       OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE = local.otel_env_vars.OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
@@ -117,15 +116,19 @@ resource "aws_lambda_function" "terraform_lambda" {
       OTEL_SERVICE_NAME                  = "otel-lambda-test1"
       OTEL_EXPORTER_OTLP_TIMEOUT         = "30000" # 30 seconds
       OTEL_RESOURCE_ATTRIBUTES           = "service.name=otel-lambda-test1,service.version=1.0.0,environment=dev,tenant=observability"
-      OTEL_PYTHON_LOG_CORRELATION        = "true" # Enables log correlation with traces
-      OTEL_PYTHON_LOG_FORMAT             = "%(msg)s [span_id=%(otelSpanID)s] [trace_id=%(otelTraceID)s]"
-      OTEL_PYTHON_LOG_LEVEL              = "debug" # Set Python logger level to debug
-      OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED = "true" # Enable automatic instrumentation for Python logging"
+      # tell the python contrib repos log instrumentation how to configure your loging env
+      OTEL_PYTHON_LOG_LEVEL = "debug" # Set to 'debug' for detailed logging, adjust as needed
+      # -> the latter is required to apply loglevel because it makes instrumentation call logging.basicConfig(...)
+      OTEL_PYTHON_LOG_CORRELATION = "true" # Enable log correlation with OpenTelemetry spans"
+      # Tell the opentelmetry-instrument process to enable log exporting (adding appropriate handlers)
+      OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED = "true"
+      # Set the log format to include span_id for better traceability
+      OTEL_PYTHON_LOG_FORMAT="%(msg)s [span_id=%(span_id)s]"
 
       # Environment variables for Collector to dynamically fill Lambda ARN in resource attributes
       TF_AWS_REGION             = data.aws_region.current.name
       TF_AWS_ACCOUNT_ID         = data.aws_caller_identity.current.account_id
-      TF_AWS_LAMBDA_FUNCTION_NAME = "otel-lambda-sample"
+      TF_AWS_LAMBDA_FUNCTION_NAME = "otel-lambda-test1"
     }
   }
 
